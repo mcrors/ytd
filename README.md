@@ -1,5 +1,7 @@
 # 📼 ytd
 
+**ytd** is a small service for downloading YouTube videos into organized folders on a media server.
+
 ---
 
 ## 🏗 Project Structure
