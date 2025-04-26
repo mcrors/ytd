@@ -12,6 +12,9 @@
 /build/
 /dist/
 
+# Test data
+/data/
+
 # Vendor directory (if you use vendoring)
 vendor/
 

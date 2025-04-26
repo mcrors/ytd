@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/mcrors/ytd/downloader"
 )
@@ -24,18 +26,34 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("get directories request received")
-	data := []string{"tech", "music", "history"}
-	resp := DirectoriesResponse{Directories: data}
+	baseDir := "./data/media/youtube" // TODO: make configurable
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	dirs := findDirs(entries)
+	resp := DirectoriesResponse{Directories: dirs}
 	respondJson(w, http.StatusOK, resp)
 }
 
 func CreateDirectoryHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	var req CreateDirectoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Printf("creating directory: %s\n", req.Dir)
+
+	baseDir := "./data/media/youtube" // TODO: make configurable
+	dirPath := filepath.Join(baseDir, req.Dir)
+
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("successfully created directory: %s\n", req.Dir)
 	respondJson(w, http.StatusCreated, map[string]string{"message": "directory created"})
 }

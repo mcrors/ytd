@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 )
 
 func respondJson(w http.ResponseWriter, status int, payload any) {
@@ -11,4 +12,15 @@ func respondJson(w http.ResponseWriter, status int, payload any) {
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func findDirs(entries []os.DirEntry) []string {
+	// TODO: should this be recursive, so we can sub-dirs
+	var results []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			results = append(results, entry.Name())
+		}
+	}
+	return results
 }
