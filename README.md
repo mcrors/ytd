@@ -1,5 +1,11 @@
 # 📼 ytd
 
+[![Go Version](https://img.shields.io/badge/go-1.22-blue)](https://golang.org/dl/)
+[![Dockerized](https://img.shields.io/badge/docker-ready-blue)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**ytd** is a small service for downloading YouTube videos into organized folders on a media server.
+
 **ytd** is a small service for downloading YouTube videos into organized folders on a media server.
 
 ---
