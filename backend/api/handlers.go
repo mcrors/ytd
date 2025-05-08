@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -20,7 +21,10 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("download request received: URL=%s, TargetDir=%s, NewName=%s\n",
 		req.URL, req.TargetDir, req.NewName,
 	)
-	downloader.DownloadVideo(req.URL, req.TargetDir, req.NewName)
+	if err := downloader.DownloadVideo(req.URL, req.TargetDir, req.NewName); err != nil {
+		http.Error(w, fmt.Sprintf("Download failed: %v", err), http.StatusInternalServerError)
+		return
+	}
 	respondJson(w, http.StatusOK, map[string]string{"message": "Download request received"})
 }
 

@@ -72,9 +72,13 @@ docker-compose up --build
 - Integrate frontend (Angular).
 - Implement video download functionality.
 - Handle recursive folder listing (optional).
-- Add authentication.
-- Configure persistent storage for downloads.
+- Add security
+- Add logging
+- Configure persistent storage for downloads via config
 - Write unit tests for backend.
+- Add currently downloading functionality
+- Add recently downloaded functionality
+- Add audio only functionality
 
 ---
 
