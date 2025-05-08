@@ -14,6 +14,10 @@ func respondJson(w http.ResponseWriter, status int, payload any) {
 	}
 }
 
+func respondError(w http.ResponseWriter, status int, message string) {
+	respondJson(w, status, ErrorResponse{Error: message})
+}
+
 func findDirs(entries []os.DirEntry) []string {
 	// TODO: should this be recursive, so we can sub-dirs
 	var results []string

@@ -13,3 +13,7 @@ type CreateDirectoryRequest struct {
 type DirectoriesResponse struct {
 	Directories []string `json:"directories"`
 }
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
