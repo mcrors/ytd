@@ -15,6 +15,7 @@ export class AppComponent {
   downloaded: string[] = [];
 
   startDownload() {
+    // when they enter nothing, do nothing
     if (!this.url.trim()) return;
 
     // Simulate download

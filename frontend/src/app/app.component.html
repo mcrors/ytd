@@ -1,13 +1,7 @@
 <div class="container">
   <header class="header">
     <h1>YouTube Downloader</h1>
-    <input
-      type="text"
-      placeholder="Enter a YouTube URL"
-      [(ngModel)]="url"
-      (keyup.enter)="startDownload()"
-    />
-    <button (click)="startDownload()">Download</button>
+    <url-input (download)="startDownload($event)"></url-input>
   </header>
 
   <main class="content">
