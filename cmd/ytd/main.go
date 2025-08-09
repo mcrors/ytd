@@ -7,6 +7,7 @@ import (
 
 	"github.com/mcrors/ytd/internal/api"
 	"github.com/mcrors/ytd/internal/downloader"
+	"github.com/mcrors/ytd/internal/middleware"
 )
 
 func main() {
@@ -16,6 +17,8 @@ func main() {
 	}
 	yt := downloader.NewYouTube()
 	server := api.NewServer(yt, baseDir)
+
+	server = middleware.Logging(server)
 
 	log.Println("server running on port 8080 ...")
 	if err := http.ListenAndServe(":8080", server); err != nil {

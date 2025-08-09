@@ -14,7 +14,7 @@
   - `/readyz` → checks base dir is writable and `yt-dlp` is present.
 
 ## Phase 2 — Middleware & Ergonomics
-- [ ] Add request logging middleware (method, path, status, duration).
+- [X] Add request logging middleware (method, path, status, duration).
 - [ ] Add request timeout middleware (configurable per-route).
 - [ ] Improve error logging (capture `yt-dlp` stderr in downloader).
 

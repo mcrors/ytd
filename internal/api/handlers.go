@@ -40,8 +40,6 @@ func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("get directories request received")
-
 	entries, err := os.ReadDir(s.baseDir)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
