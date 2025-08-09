@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  ytd:
+    build: .
+    image: ytd:dev
+    container_name: ytd
+    ports:
+      - "8080:8080"      # match your server port
+    environment:
+      - YTD_ENV=dev
+    volumes:
+      - ./data:/data
