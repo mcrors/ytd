@@ -17,10 +17,11 @@ type Server struct {
 	baseDir string
 }
 
-func NewServer(dl DownloadService) http.Handler {
-	base := getenv("YTD_BASE_DIR", "./data/media/youtube")
-
-	s := &Server{dl: dl, baseDir: base}
+func NewServer(dl DownloadService, baseDir string) http.Handler {
+	s := &Server{
+		dl:      dl,
+		baseDir: baseDir,
+	}
 
 	r := mux.NewRouter()
 
