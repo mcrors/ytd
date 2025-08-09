@@ -2,14 +2,16 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
-func (s *Server) DownloadHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req DownloadRequest
@@ -37,7 +39,7 @@ func (s *Server) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Download started"})
 }
 
-func (s *Server) GetDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("get directories request received")
 
 	entries, err := os.ReadDir(s.baseDir)
@@ -51,7 +53,7 @@ func (s *Server) GetDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, resp)
 }
 
-func (s *Server) CreateDirectoryHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req CreateDirectoryRequest
@@ -74,4 +76,40 @@ func (s *Server) CreateDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("created directory: %s", req.Dir)
 	respondJSON(w, http.StatusCreated, map[string]string{"message": "Directory created"})
+}
+
+func (s *Server) healthzHandler(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) readyzHandlers(w http.ResponseWriter, r *http.Request) {
+	checks := readyChecks{
+		"baseDir": "ok",
+		"yt-dlp":  "ok",
+	}
+
+	var readyErr error
+
+	if err := ensureWritable(s.baseDir); err != nil {
+		checks["baseDir"] = err.Error()
+		readyErr = errors.New("baseDir not writable")
+	}
+
+	bin := "yt-dlp"
+	timeout := 2 * time.Second
+	if err := checkYtDlp(r.Context(), bin, timeout); err != nil {
+		checks["yt-dlp"] = err.Error()
+		readyErr = errors.New("yt-dlp unavailable")
+	}
+
+	resp := status{
+		Status: map[bool]healthStatus{true: StatusOK, false: StatusDegraded}[readyErr == nil],
+		Checks: checks,
+	}
+
+	statusCode := http.StatusOK
+	if readyErr != nil {
+		statusCode = http.StatusServiceUnavailable // 503 so k8s/infra can gate traffic
+	}
+	respondJSON(w, statusCode, resp)
 }

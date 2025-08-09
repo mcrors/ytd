@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
 )
@@ -25,16 +24,12 @@ func NewServer(dl DownloadService, baseDir string) http.Handler {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/api/download", s.DownloadHandler).Methods(http.MethodPost)
-	r.HandleFunc("/api/directories", s.GetDirectoriesHandler).Methods(http.MethodGet)
-	r.HandleFunc("/api/directory", s.CreateDirectoryHandler).Methods(http.MethodPost)
+	r.HandleFunc("/healthz", s.healthzHandler).Methods(http.MethodGet)
+	r.HandleFunc("/readyz", s.readyzHandlers).Methods(http.MethodGet)
+
+	r.HandleFunc("/api/download", s.downloadHandler).Methods(http.MethodPost)
+	r.HandleFunc("/api/directories", s.getDirectoriesHandler).Methods(http.MethodGet)
+	r.HandleFunc("/api/directory", s.createDirectoryHandler).Methods(http.MethodPost)
 
 	return r
-}
-
-func getenv(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
 }
