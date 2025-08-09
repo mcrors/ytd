@@ -1,7 +1,7 @@
 # TODO
 
 ## Phase 1 — Cleanup & Safety
-- [ ] Add `YTD_BASE_DIR` environment variable (default to `./data/media/youtube`).
+- [X] Add `YTD_BASE_DIR` environment variable (default to `./data/media/youtube`).
 - [ ] Implement `safeJoin` or `normalizeTwoLevel` to:
   - Prevent path traversal (`../` etc.).
   - Enforce exactly **two directory levels**: `genre/channel`.

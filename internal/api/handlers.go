@@ -22,7 +22,14 @@ func (s *Server) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		req.URL, req.TargetDir, req.NewName,
 	)
 
-	if err := s.dl.Download(r.Context(), req.URL, req.TargetDir, req.NewName); err != nil {
+	rel, err := normalizeTwoLevel(req.TargetDir)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	target := filepath.Join(s.baseDir, rel)
+
+	if err := s.dl.Download(r.Context(), req.URL, target, req.NewName); err != nil {
 		respondError(w, http.StatusInternalServerError, fmt.Sprintf("download failed: %v", err))
 		return
 	}
@@ -53,7 +60,13 @@ func (s *Server) CreateDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	dirPath := filepath.Join(s.baseDir, req.Dir)
+	rel, err := normalizeTwoLevel(req.Dir)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	dirPath := filepath.Join(s.baseDir, rel)
+
 	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
