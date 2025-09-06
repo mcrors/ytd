@@ -17,6 +17,7 @@
 - [X] Add request logging middleware (method, path, status, duration).
 - [ ] Add request timeout middleware (configurable per-route).
 - [ ] Improve error logging (capture `yt-dlp` stderr in downloader).
+- [ ] Include yt-dlp in the docker file
 
 ## Phase 3 — Testability
 - [X] Keep `Downloader` interface in `api` (consumer).

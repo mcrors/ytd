@@ -31,6 +31,7 @@ func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) 
 		outTpl = newName + ".%(ext)s"
 	}
 
+	// TODO: should this run on parallel
 	cmd := exec.CommandContext(ctx, y.Bin, "-o", filepath.Join(targetDir, outTpl), url)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
