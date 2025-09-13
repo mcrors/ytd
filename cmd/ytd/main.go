@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/mcrors/ytd/internal/api"
 	"github.com/mcrors/ytd/internal/downloader"
@@ -20,8 +21,17 @@ func main() {
 
 	server = middleware.Logging(server)
 
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           server,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
 	log.Println("server running on port 8080 ...")
-	if err := http.ListenAndServe(":8080", server); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

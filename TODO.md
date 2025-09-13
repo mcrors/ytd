@@ -15,9 +15,9 @@
 
 ## Phase 2 — Middleware & Ergonomics
 - [X] Add request logging middleware (method, path, status, duration).
-- [ ] Add request timeout middleware (configurable per-route).
+- [X] Include yt-dlp in the docker file
+- [X] Add server level timeouts
 - [ ] Improve error logging (capture `yt-dlp` stderr in downloader).
-- [ ] Include yt-dlp in the docker file
 
 ## Phase 3 — Testability
 - [X] Keep `Downloader` interface in `api` (consumer).
@@ -38,3 +38,4 @@
 - [ ] Convert JSON endpoints to HTML/partial responses where appropriate.
 - [ ] Serve both pages and partials from the same router (same origin — no CORS needed).
 
+## Phase 5 - Frontend and backend validation
