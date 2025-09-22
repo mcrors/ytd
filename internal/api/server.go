@@ -5,18 +5,19 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mcrors/ytd/internal/download"
 )
 
-type DownloadService interface {
-	Download(ctx context.Context, url, targetDir, newName string) error
+type Downloader interface {
+	Download(context.Context, download.DownloadCommand) (*download.DownloadResult, error)
 }
 
 type Server struct {
-	dl      DownloadService
+	dl      Downloader
 	baseDir string
 }
 
-func NewServer(dl DownloadService, baseDir string) http.Handler {
+func NewServer(dl Downloader, baseDir string) http.Handler {
 	s := &Server{
 		dl:      dl,
 		baseDir: baseDir,

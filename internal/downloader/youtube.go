@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type YouTube struct {
@@ -21,6 +22,7 @@ func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) 
 	if _, err := exec.LookPath(y.Bin); err != nil {
 		return fmt.Errorf("%s not found in PATH: %w", y.Bin, err)
 	}
+
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create target directory: %w", err)
 	}
@@ -38,4 +40,17 @@ func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) 
 		return fmt.Errorf("%s failed: %w\n%s", y.Bin, err, string(out))
 	}
 	return nil
+}
+
+func (y *YouTube) GetChannel(ctx context.Context, url string) (string, error) {
+	if _, err := exec.LookPath(y.Bin); err != nil {
+		return "", fmt.Errorf("%s not found in PATH: %w", y.Bin, err)
+	}
+	cmd := exec.CommandContext(ctx, y.Bin, "--no-warning", "--print", "%(channel)s", url)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s failed: %w\n%s", y.Bin, err, string(out))
+	}
+	result := strings.TrimSpace(string(out))
+	return result, nil
 }

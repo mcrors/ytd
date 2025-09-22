@@ -3,12 +3,13 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/mcrors/ytd/internal/download"
 )
 
 func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,23 +21,24 @@ func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("download request: URL=%s, TargetDir=%s, NewName=%s",
-		req.URL, req.TargetDir, req.NewName,
-	)
+	cmd := download.DownloadCommand{
+		TargetDir: req.TargetDir,
+		URL:       req.URL,
+		NewName:   req.NewName,
+	}
 
-	rel, err := normalizeTwoLevel(req.TargetDir)
+	res, err := s.dl.Download(r.Context(), cmd)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	target := filepath.Join(s.baseDir, rel)
 
-	if err := s.dl.Download(r.Context(), req.URL, target, req.NewName); err != nil {
-		respondError(w, http.StatusInternalServerError, fmt.Sprintf("download failed: %v", err))
-		return
+	resp := DownloadResponse{
+		Filename: res.Filename,
+		Message:  res.Message,
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Download started"})
+	respondJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) getDirectoriesHandler(w http.ResponseWriter, r *http.Request) {

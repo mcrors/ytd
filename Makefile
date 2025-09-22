@@ -4,7 +4,7 @@ BUILD_DIR = bin
 MAIN_FILE = cmd/ytd/main.go
 
 # Default target to run the app
-.PHONY: run build docker fmt lint
+.PHONY: run build docker fmt lint test
 
 run:
 	go run $(MAIN_FILE)
@@ -20,3 +20,6 @@ fmt:
 
 lint:
 	golangci-lint run
+
+test:
+	go test ./... -v -cover

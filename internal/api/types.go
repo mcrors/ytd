@@ -6,6 +6,11 @@ type DownloadRequest struct {
 	NewName   string `json:"newName"`
 }
 
+type DownloadResponse struct {
+	Filename string `json:"filename"`
+	Message  string `json:"message"`
+}
+
 type CreateDirectoryRequest struct {
 	Dir string `json:"dir"`
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mcrors/ytd/internal/api"
+	"github.com/mcrors/ytd/internal/download"
 	"github.com/mcrors/ytd/internal/downloader"
 	"github.com/mcrors/ytd/internal/middleware"
 )
@@ -17,7 +18,8 @@ func main() {
 		baseDir = "./data/media/youtube"
 	}
 	yt := downloader.NewYouTube()
-	server := api.NewServer(yt, baseDir)
+	ds := download.NewDownloadService(baseDir, yt)
+	server := api.NewServer(ds, baseDir)
 
 	server = middleware.Logging(server)
 
