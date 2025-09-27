@@ -12,18 +12,18 @@ import (
 type Commander func(ctx context.Context, name string, args ...string) *exec.Cmd
 type LookPathFunc func(file string) (string, error)
 
-type YouTube struct {
+type youTube struct {
 	// which binary to call; defaults to "yt-dlp"
-	Bin      string
-	Command  Commander
-	LookPath LookPathFunc
+	bin          string
+	cmd          Commander
+	lookPathFunc LookPathFunc
 }
 
-func NewYouTube() *YouTube {
-	return &YouTube{
-		Bin:      "yt-dlp",
-		Command:  exec.CommandContext,
-		LookPath: exec.LookPath,
+func NewYouTube(bin string, cmd Commander, LookPathFunc LookPathFunc) *youTube {
+	return &youTube{
+		bin:          bin,
+		cmd:          cmd,
+		lookPathFunc: LookPathFunc,
 	}
 }
 
@@ -40,9 +40,9 @@ func NewYouTube() *YouTube {
 // Returns:
 //   - error: non-nil if the binary is not found in PATH, the target directory
 //     cannot be created, or the download command fails.
-func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) error {
-	if _, err := y.LookPath(y.Bin); err != nil {
-		return fmt.Errorf("%s not found in PATH: %w", y.Bin, err)
+func (y *youTube) Download(ctx context.Context, url, targetDir, newName string) error {
+	if _, err := y.lookPathFunc(y.bin); err != nil {
+		return fmt.Errorf("%s not found in PATH: %w", y.bin, err)
 	}
 
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
@@ -56,10 +56,10 @@ func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) 
 	}
 
 	// TODO: should this run on parallel
-	cmd := y.Command(ctx, y.Bin, "-o", filepath.Join(targetDir, outTpl), url)
+	cmd := y.cmd(ctx, y.bin, "-o", filepath.Join(targetDir, outTpl), url)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s failed: %w\n%s", y.Bin, err, string(out))
+		return fmt.Errorf("%s failed: %w\n%s", y.bin, err, string(out))
 	}
 	return nil
 }
@@ -73,14 +73,14 @@ func (y *YouTube) Download(ctx context.Context, url, targetDir, newName string) 
 // Returns:
 //   - string: the resolved channel name, with leading and trailing whitespace removed.
 //   - error: non-nil if the binary is not found in PATH, or if the command execution fails.
-func (y *YouTube) GetChannel(ctx context.Context, url string) (string, error) {
-	if _, err := y.LookPath(y.Bin); err != nil {
-		return "", fmt.Errorf("%s not found in PATH: %w", y.Bin, err)
+func (y *youTube) GetChannel(ctx context.Context, url string) (string, error) {
+	if _, err := y.lookPathFunc(y.bin); err != nil {
+		return "", fmt.Errorf("%s not found in PATH: %w", y.bin, err)
 	}
-	cmd := y.Command(ctx, y.Bin, "--no-warning", "--print", "%(channel)s", url)
+	cmd := y.cmd(ctx, y.bin, "--no-warning", "--print", "%(channel)s", url)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("%s failed: %w\n%s", y.Bin, err, string(out))
+		return "", fmt.Errorf("%s failed: %w\n%s", y.bin, err, string(out))
 	}
 	result := strings.TrimSpace(string(out))
 	return result, nil

@@ -48,11 +48,11 @@ func TestHelperProcess(t *testing.T) {
 
 func TestGetChannel_ParsesOutput(t *testing.T) {
 	// Given a YouTube
-	yt := &downloader.YouTube{
-		Bin:      "test-yt-dlp",
-		Command:  fakeCmd,
-		LookPath: func(string) (string, error) { return "/tmp/yt-dlp", nil },
-	}
+	yt := downloader.NewYouTube(
+		"test-yt-dlp",
+		fakeCmd,
+		func(file string) (string, error) { return "/tmp/yt-dlp", nil },
+	)
 	got, err := yt.GetChannel(context.Background(), "https://x")
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -67,7 +67,7 @@ func TestGetChannel_Integration(t *testing.T) {
 		t.Skip("skipping network-dependent integration test in -short")
 	}
 
-	yt := downloader.NewYouTube()
+	yt := downloader.NewYouTube("yt-dlp", exec.CommandContext, exec.LookPath)
 	url := "https://www.youtube.com/watch?v=c8H0w4yBL10"
 	want := "Flo Woelki"
 

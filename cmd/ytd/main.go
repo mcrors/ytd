@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/mcrors/ytd/internal/api"
@@ -17,7 +18,7 @@ func main() {
 	if baseDir == "" {
 		baseDir = "./data/media/youtube"
 	}
-	yt := downloader.NewYouTube()
+	yt := downloader.NewYouTube("yt-dlp", exec.CommandContext, exec.LookPath)
 	ds := download.NewDownloadService(baseDir, yt)
 	server := api.NewServer(ds, baseDir)
 
