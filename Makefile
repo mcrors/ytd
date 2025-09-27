@@ -21,5 +21,8 @@ fmt:
 lint:
 	golangci-lint run
 
-test:
+unit-test:
+	go test ./... -v -cover -short=true
+
+integration-test:
 	go test ./... -v -cover
