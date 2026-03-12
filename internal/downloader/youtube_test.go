@@ -34,10 +34,15 @@ func TestHelperProcess(t *testing.T) {
 		args = args[1:]
 	}
 
+	output, ok := os.LookupEnv("FAKE_YTDLP_STDOUT")
+	if !ok {
+		fmt.Println("error: couldn't find FAKE_YTDLP_STDOUT in env")
+	}
+
 	// Now `args` contains exactly what your code passed: e.g. ["--no-warning","--print","%(channel)s",url]
 	for i, a := range args {
 		if a == "--print" && i+1 < len(args) && args[i+1] == "%(channel)s" {
-			fmt.Fprintln(os.Stdout, "Flo Woelki")
+			fmt.Fprintln(os.Stdout, output)
 			os.Exit(0)
 		}
 	}
@@ -46,19 +51,34 @@ func TestHelperProcess(t *testing.T) {
 	os.Exit(2)
 }
 
+var mockedYtDlp = downloader.NewYouTube(
+	"test-yt-dlp",
+	fakeCmd,
+	func(file string) (string, error) { return "/tmp/yt-dlp", nil },
+)
+
+var getChannelTests = []struct {
+	name   string
+	output string
+	want   string
+}{
+	{"normal", "Flo Woelki", "Flo Woelki"},
+	{"spaces", "  Flo Woelki  ", "Flo Woelki"},
+	{"new lines", "Flo Woelki\n\n", "Flo Woelki"},
+}
+
 func TestGetChannel_ParsesOutput(t *testing.T) {
-	// Given a YouTube
-	yt := downloader.NewYouTube(
-		"test-yt-dlp",
-		fakeCmd,
-		func(file string) (string, error) { return "/tmp/yt-dlp", nil },
-	)
-	got, err := yt.GetChannel(context.Background(), "https://x")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if got != "Flo Woelki" {
-		t.Fatalf("got %q", got)
+	for _, tt := range getChannelTests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv("FAKE_YTDLP_STDOUT", tt.output)
+			got, err := mockedYtDlp.GetChannel(context.Background(), "https://x")
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("wanted: %s, got: %s", tt.want, got)
+			}
+		})
 	}
 }
 
