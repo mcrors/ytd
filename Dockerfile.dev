@@ -1,0 +1,12 @@
+FROM golang:1.23 AS build
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ENV CGO_ENABLED=0
+RUN go build -o /bin/ytd ./cmd/ytd
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY --from=build /bin/ytd /usr/local/bin/ytd
+ENTRYPOINT ["/usr/local/bin/ytd"]

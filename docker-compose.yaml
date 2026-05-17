@@ -1,10 +1,7 @@
-version: "3.9"
-
 services:
   ytd:
     build:
       context: .
-      # If you added ARGs in the Dockerfile for reproducibility:
       args:
         YTDLP_VERSION: "2024.08.06"
         FFMPEG_VERSION: "6.1.1"
@@ -14,37 +11,24 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # App config
-      - YTD_ENV=dev
-      - YTD_BASE_DIR=/data
+      - YTD_MEDIA_DIR=/data/media
+      - YTD_DB_PATH=/data/ytdlp.db
       # yt-dlp runtime niceties
-      - YTDLP_HOME=/var/cache/yt-dlp        # persistent cache (thumbnails, etc.)
-      - TMPDIR=/var/tmp                     # where large temp files go
-      # SSL cert path for distroless (matches Dockerfile copy)
+      - YTDLP_HOME=/var/cache/yt-dlp
+      - TMPDIR=/var/tmp
       - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-    # If your app writes to /data, keep it as a bind mount for quick inspection
     volumes:
       - ./data:/data
-      # Persist yt-dlp cache and tmp across container restarts (named volumes)
       - ytd_cache:/var/cache/yt-dlp
       - ytd_tmp:/var/tmp
-      # Optional: mount credentials if you need logged-in downloads
       # - ./secrets/cookies.txt:/etc/yt/cookies.txt:ro
       # - ./secrets/.netrc:/etc/yt/.netrc:ro
-    # Distroless has no shell; healthcheck must use your binary/HTTP
+      # - ./config.yaml:/app/config.yaml:ro
+    # Distroless has no shell or curl — healthcheck is handled by the Makefile e2e-test target
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8080/healthz"]
-      # If distroless lacks wget/curl, expose a health endpoint and switch to:
-      # test: ["CMD", "/usr/local/bin/ytd", "healthcheck"]
-      interval: 10s
-      timeout: 2s
-      retries: 5
-      start_period: 5s
-    # Make restarts painless during dev, but not too aggressive
+      disable: true
     restart: on-failure:3
-    # Map to your host user to avoid root-owned files in ./data
     user: "${UID:-1000}:${GID:-1000}"
-    # Tighten container a bit while leaving room for dev
     read_only: true
     tmpfs:
       - /run

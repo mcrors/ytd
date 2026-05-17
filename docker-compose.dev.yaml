@@ -1,0 +1,21 @@
+services:
+  ytd:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ytd:dev
+    container_name: ytd
+    ports:
+      - "8080:8080"
+    environment:
+      - YTD_MEDIA_DIR=/data/media
+      - YTD_DB_PATH=/data/ytdlp.db
+    volumes:
+      - ./data:/data
+      # - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
