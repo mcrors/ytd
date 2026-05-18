@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -15,12 +16,14 @@ type Downloader interface {
 type Server struct {
 	dl      Downloader
 	baseDir string
+	db      *sql.DB
 }
 
-func NewServer(dl Downloader, baseDir string) http.Handler {
+func NewServer(dl Downloader, baseDir string, db *sql.DB) http.Handler {
 	s := &Server{
 		dl:      dl,
 		baseDir: baseDir,
+		db:      db,
 	}
 
 	r := mux.NewRouter()

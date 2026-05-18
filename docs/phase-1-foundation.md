@@ -6,7 +6,7 @@ Infrastructure layer that everything else builds on. App boots, serves a base HT
 
 ---
 
-## 1.1 — Config System
+## 1.1 — Config System - DONE
 
 **Goal**: centralised config loaded from YAML file + env vars with sensible defaults.
 

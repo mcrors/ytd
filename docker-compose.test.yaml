@@ -1,0 +1,30 @@
+services:
+  ytd:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ytd:test
+    environment:
+      - YTD_MEDIA_DIR=/data/media
+      - YTD_DB_PATH=/data/ytdlp.db
+    volumes:
+      - ytd_test_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    environment:
+      - YTD_BASE_URL=http://ytd:8080
+    depends_on:
+      ytd:
+        condition: service_healthy
+
+volumes:
+  ytd_test_data:

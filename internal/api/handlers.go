@@ -85,6 +85,7 @@ func (s *Server) healthzHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) readyzHandlers(w http.ResponseWriter, r *http.Request) {
 	checks := readyChecks{
 		"baseDir": "ok",
+		"db":      "ok",
 		"yt-dlp":  "ok",
 	}
 
@@ -93,6 +94,11 @@ func (s *Server) readyzHandlers(w http.ResponseWriter, r *http.Request) {
 	if err := ensureWritable(s.baseDir); err != nil {
 		checks["baseDir"] = err.Error()
 		readyErr = errors.New("baseDir not writable")
+	}
+
+	if err := s.db.PingContext(r.Context()); err != nil {
+		checks["db"] = err.Error()
+		readyErr = errors.New("db unavailable")
 	}
 
 	bin := "yt-dlp"

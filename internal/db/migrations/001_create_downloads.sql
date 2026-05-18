@@ -1,0 +1,12 @@
+CREATE TABLE downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    target_dir TEXT NOT NULL,
+    filename TEXT NOT NULL DEFAULT '',
+    format TEXT NOT NULL DEFAULT 'video',
+    status TEXT NOT NULL DEFAULT 'queued',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
