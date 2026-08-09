@@ -39,6 +39,7 @@ Provided via environment variables or a YAML config file mounted into the contai
 
 - User pastes a YouTube URL into the UI
 - User selects a target folder from the folder browser
+- On submission, a `yt-dlp --get-title` call pre-fetches the video title (~1-2s) before the download is queued — the queue and history always show a human-readable title
 - Download is queued and executed via yt-dlp
 - User can select download format (video quality or audio-only MP3)
 - User can change the name of the downloaded video
@@ -57,16 +58,17 @@ Provided via environment variables or a YAML config file mounted into the contai
 - Completed and failed downloads retained in history view
 - Each history entry shows: title, target folder, format, timestamp, status
 - Failed downloads show error reason
-- User can cancel an in-progress download
+- User can cancel an in-progress download — cancellation kills the yt-dlp subprocess and removes any partial `.part` files from the target directory
 
 ### 4. Channel Subscriptions
 
 - User can subscribe to a YouTube channel by providing its URL
-- Each subscription has a configured target folder and check interval
-- Background worker polls subscribed channels at the configured interval
+- Each subscription has a configured target folder
+- Background worker polls all subscribed channels on a single global interval (configured via `POLL_INTERVAL`)
 - New videos are automatically queued for download
 - User can view, pause, and delete subscriptions
 - Last checked and last downloaded timestamps shown per subscription
+- Poll failures are logged to SQLite but not surfaced prominently on the subscriptions page — a dedicated poll history view (separate page or expandable section) is available for those who want to investigate persistent failures
 
 ### 5. Library Browser
 
@@ -74,7 +76,9 @@ Provided via environment variables or a YAML config file mounted into the contai
 - Navigable folder tree on the left, file list on the right
 - File metadata shown: title, size, date added
 - Metadata sourced from SQLite where available, filesystem otherwise
-- No playback — browse and organise only
+- Read-only — no move, rename, or delete from the UI
+- No playback — browse only
+- Target folder is chosen at download time and is permanent; reorganisation is done at the filesystem level
 
 ---
 
@@ -105,3 +109,5 @@ Provided via environment variables or a YAML config file mounted into the contai
 - Scheduled downloads (download at a specific time)
 - Import/export of subscription list
 - Mobile-optimised native-style layout
+- Subscription back-catalogue download: opt-in flag per Subscription to download all historical videos posted before the subscription was created (currently excluded by date cutoff — see ADR-0002)
+- Library file organisation: move and rename files from within the browser UI (v1 is read-only; target folder is chosen at download time and permanent)
