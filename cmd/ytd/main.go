@@ -6,12 +6,12 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/mcrors/ytd/internal/api"
 	"github.com/mcrors/ytd/internal/config"
 	"github.com/mcrors/ytd/internal/db"
 	"github.com/mcrors/ytd/internal/download"
 	"github.com/mcrors/ytd/internal/downloader"
 	"github.com/mcrors/ytd/internal/middleware"
+	"github.com/mcrors/ytd/internal/web"
 )
 
 func main() {
@@ -32,13 +32,13 @@ func main() {
 
 	yt := downloader.NewYouTube("yt-dlp", exec.CommandContext, exec.LookPath)
 	ds := download.NewDownloadService(cfg.MediaDir, yt)
-	server := api.NewServer(ds, cfg.MediaDir, database)
 
-	server = middleware.Logging(server)
+	mux := http.NewServeMux()
+	web.RegisterRoutes(mux, ds, cfg.MediaDir, database)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server,
+		Handler:           middleware.Logging(mux),
 		ReadHeaderTimeout: 2 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      3 * time.Second,

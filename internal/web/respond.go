@@ -1,4 +1,4 @@
-package api
+package web
 
 import (
 	"encoding/json"
@@ -14,5 +14,7 @@ func respondJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, ErrorResponse{Error: message})
+	respondJSON(w, status, struct {
+		Error string `json:"error"`
+	}{Error: message})
 }
