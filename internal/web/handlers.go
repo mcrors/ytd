@@ -9,11 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/pathutil"
 )
 
 // --- Request/response types ---
@@ -95,13 +94,13 @@ func (s *server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rel, err := normalizeTwoLevel(req.Dir)
+	target, err := pathutil.SafeJoin(s.baseDir, req.Dir)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := os.MkdirAll(filepath.Join(s.baseDir, rel), 0o755); err != nil {
+	if err := os.MkdirAll(target, 0o755); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -169,55 +168,6 @@ func checkYtDlp(parent context.Context, bin string, timeout time.Duration) error
 		return err
 	}
 	return ctx.Err()
-}
-
-// --- Filesystem helpers ---
-
-func slugify(s string) string {
-	s = strings.ToLower(strings.TrimSpace(s))
-	s = strings.ReplaceAll(s, "_", "-")
-	s = strings.ReplaceAll(s, " ", "-")
-
-	var b strings.Builder
-	prevDash := false
-	for _, r := range s {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-			prevDash = false
-		case r == '-':
-			if !prevDash {
-				b.WriteRune('-')
-				prevDash = true
-			}
-		}
-	}
-	return strings.Trim(b.String(), "-")
-}
-
-var twoSegRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*$`)
-
-func normalizeTwoLevel(rel string) (string, error) {
-	if rel == "" {
-		return "", errors.New("path required: use genre/channel")
-	}
-	rel = filepath.ToSlash(strings.TrimSpace(rel))
-	if strings.HasPrefix(rel, "/") || strings.Contains(rel, "..") {
-		return "", errors.New("invalid path")
-	}
-	parts := strings.Split(rel, "/")
-	if len(parts) != 2 {
-		return "", errors.New("path must be exactly two levels: genre/channel")
-	}
-	g, c := slugify(parts[0]), slugify(parts[1])
-	if g == "" || c == "" {
-		return "", errors.New("invalid path after slugify")
-	}
-	clean := g + "/" + c
-	if !twoSegRe.MatchString(clean) {
-		return "", errors.New("invalid characters in path")
-	}
-	return clean, nil
 }
 
 func findDirs(entries []os.DirEntry) []string {
