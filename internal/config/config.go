@@ -16,6 +16,7 @@ type Config struct {
 	Port            string
 	MaxConcurrentDL int
 	PollInterval    time.Duration
+	Dev             bool
 }
 
 type yamlConfig struct {
@@ -121,6 +122,8 @@ func applyEnv(cfg *Config) error {
 		}
 		cfg.PollInterval = d
 	}
+
+	cfg.Dev = os.Getenv("YTD_DEV") == "true"
 
 	return nil
 }

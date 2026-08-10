@@ -34,7 +34,9 @@ func main() {
 	ds := download.NewDownloadService(cfg.MediaDir, yt)
 
 	mux := http.NewServeMux()
-	web.RegisterRoutes(mux, ds, cfg.MediaDir, database)
+	if err := web.RegisterRoutes(mux, ds, cfg.MediaDir, database, cfg.Dev); err != nil {
+		log.Fatalf("web: %v", err)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

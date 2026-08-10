@@ -54,6 +54,10 @@ type readyStatus struct {
 
 // --- Handlers ---
 
+func (s *server) indexHandler(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "index.html", nil)
+}
+
 func (s *server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
