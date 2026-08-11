@@ -18,9 +18,10 @@ import (
 // --- Request/response types ---
 
 type downloadRequest struct {
-	URL       string `json:"url"`
-	TargetDir string `json:"targetDir"`
-	NewName   string `json:"newName"`
+	URL       string          `json:"url"`
+	TargetDir string          `json:"targetDir"`
+	NewName   string          `json:"newName"`
+	Format    download.Format `json:"format"`
 }
 
 type downloadResponse struct {
@@ -67,10 +68,16 @@ func (s *server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	format := req.Format
+	if format == "" {
+		format = download.FormatBest
+	}
+
 	res, err := s.dl.Download(r.Context(), download.DownloadCommand{
 		TargetDir: req.TargetDir,
 		URL:       req.URL,
 		NewName:   req.NewName,
+		Format:    format,
 	})
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())

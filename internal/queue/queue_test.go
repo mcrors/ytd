@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mcrors/ytd/internal/db"
+	"github.com/mcrors/ytd/internal/download"
 	"github.com/mcrors/ytd/internal/queue"
 )
 
@@ -30,19 +31,19 @@ func newTestDB(t *testing.T) *sql.DB {
 
 // funcDownloader lets tests supply a Download implementation inline.
 type funcDownloader struct {
-	fn func(ctx context.Context, url, dir, name string) error
+	fn func(ctx context.Context, url, dir, name string, format download.Format) error
 }
 
-func (f *funcDownloader) Download(ctx context.Context, url, dir, name string) error {
-	return f.fn(ctx, url, dir, name)
+func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format download.Format) error {
+	return f.fn(ctx, url, dir, name, format)
 }
 
 func okDownloader() *funcDownloader {
-	return &funcDownloader{fn: func(_ context.Context, _, _, _ string) error { return nil }}
+	return &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil }}
 }
 
 func errDownloader(msg string) *funcDownloader {
-	return &funcDownloader{fn: func(_ context.Context, _, _, _ string) error {
+	return &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error {
 		return errors.New(msg)
 	}}
 }
@@ -111,7 +112,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	var mu sync.Mutex
 	current, maxSeen := 0, 0
 
-	dl := &funcDownloader{fn: func(_ context.Context, _, _, _ string) error {
+	dl := &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error {
 		mu.Lock()
 		current++
 		if current > maxSeen {

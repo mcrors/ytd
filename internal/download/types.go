@@ -4,6 +4,7 @@ type DownloadCommand struct {
 	TargetDir string
 	URL       string
 	NewName   string
+	Format    Format
 }
 
 type DownloadResult struct {

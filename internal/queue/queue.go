@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+
+	"github.com/mcrors/ytd/internal/download"
 )
 
 const bufferSize = 100
 
 type Downloader interface {
-	Download(ctx context.Context, url, targetDir, newName string) error
+	Download(ctx context.Context, url, targetDir, newName string, format download.Format) error
 }
 
 type DownloadJob struct {
@@ -18,7 +20,7 @@ type DownloadJob struct {
 	URL       string
 	TargetDir string // absolute path, already validated by the enqueuing layer
 	NewName   string
-	Format    string
+	Format    download.Format
 }
 
 type Queue struct {
@@ -84,7 +86,7 @@ func (q *Queue) process(job DownloadJob) {
 		log.Printf("queue: failed to update status for download %d: %v", job.ID, err)
 	}
 
-	err := q.dl.Download(context.Background(), job.URL, job.TargetDir, job.NewName)
+	err := q.dl.Download(context.Background(), job.URL, job.TargetDir, job.NewName, job.Format)
 	if err != nil {
 		log.Printf("queue: download %d failed: %v", job.ID, err)
 		q.db.Exec(`

@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/mcrors/ytd/internal/download"
 )
 
 type Commander func(ctx context.Context, name string, args ...string) *exec.Cmd
@@ -40,7 +42,7 @@ func NewYouTube(bin string, cmd Commander, LookPathFunc LookPathFunc) *youTube {
 // Returns:
 //   - error: non-nil if the binary is not found in PATH, the target directory
 //     cannot be created, or the download command fails.
-func (y *youTube) Download(ctx context.Context, url, targetDir, newName string) error {
+func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, format download.Format) error {
 	if _, err := y.lookPathFunc(y.bin); err != nil {
 		return fmt.Errorf("%s not found in PATH: %w", y.bin, err)
 	}
@@ -49,15 +51,19 @@ func (y *youTube) Download(ctx context.Context, url, targetDir, newName string) 
 		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
+	formatArgs, err := download.FormatArgs(format)
+	if err != nil {
+		return err
+	}
+
 	outTpl := "%(title)s.%(ext)s"
 	if newName != "" {
 		newName = filepath.Base(newName)
 		outTpl = newName + ".%(ext)s"
 	}
 
-	// TODO: should this run on parallel
-	cmd := y.cmd(ctx, y.bin, "-o", filepath.Join(targetDir, outTpl), url)
-	out, err := cmd.CombinedOutput()
+	args := append(formatArgs, "-o", filepath.Join(targetDir, outTpl), url)
+	out, err := y.cmd(ctx, y.bin, args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s failed: %w\n%s", y.bin, err, string(out))
 	}
