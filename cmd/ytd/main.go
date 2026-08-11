@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/mcrors/ytd/internal/config"
@@ -11,6 +15,7 @@ import (
 	"github.com/mcrors/ytd/internal/download"
 	"github.com/mcrors/ytd/internal/downloader"
 	"github.com/mcrors/ytd/internal/middleware"
+	"github.com/mcrors/ytd/internal/queue"
 	"github.com/mcrors/ytd/internal/web"
 )
 
@@ -33,6 +38,9 @@ func main() {
 	yt := downloader.NewYouTube("yt-dlp", exec.CommandContext, exec.LookPath)
 	ds := download.NewDownloadService(cfg.MediaDir, yt)
 
+	q := queue.New(cfg.MaxConcurrentDL, database, yt)
+	q.Start()
+
 	mux := http.NewServeMux()
 	if err := web.RegisterRoutes(mux, ds, cfg.MediaDir, database, cfg.Dev); err != nil {
 		log.Fatalf("web: %v", err)
@@ -47,8 +55,24 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("server running on port %s ...", cfg.Port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	go func() {
+		log.Printf("server running on port %s ...", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, os.Interrupt)
+	<-quit
+
+	log.Println("shutting down...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("server shutdown: %v", err)
 	}
+	q.Shutdown()
 }
