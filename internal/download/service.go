@@ -8,7 +8,7 @@ import (
 )
 
 type Downloader interface {
-	Download(ctx context.Context, url, targetDir, newName string, format Format) error
+	Download(ctx context.Context, url, targetDir, newName string, format Format, onProgress func(int)) error
 }
 
 type downloadService struct {
@@ -29,7 +29,7 @@ func (ds *downloadService) Download(ctx context.Context, dc DownloadCommand) (*D
 		return nil, err
 	}
 
-	if err := ds.downloader.Download(ctx, dc.URL, target, dc.NewName, dc.Format); err != nil {
+	if err := ds.downloader.Download(ctx, dc.URL, target, dc.NewName, dc.Format, nil); err != nil {
 		return nil, err
 	}
 

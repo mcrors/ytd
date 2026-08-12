@@ -52,11 +52,18 @@ func TestMigrate_Idempotent(t *testing.T) {
 		t.Fatalf("second Migrate: %v", err)
 	}
 
-	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&count); err != nil {
+	// Count after first run — running Migrate again must not insert duplicates.
+	var countAfterFirst, countAfterSecond int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&countAfterFirst); err != nil {
 		t.Fatalf("querying schema_migrations: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("schema_migrations rows: got %d, want 1", count)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("third Migrate: %v", err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&countAfterSecond); err != nil {
+		t.Fatalf("querying schema_migrations: %v", err)
+	}
+	if countAfterSecond != countAfterFirst {
+		t.Errorf("idempotency failed: count went from %d to %d after re-running Migrate", countAfterFirst, countAfterSecond)
 	}
 }

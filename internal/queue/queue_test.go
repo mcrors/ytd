@@ -31,12 +31,12 @@ func newTestDB(t *testing.T) *sql.DB {
 
 // funcDownloader lets tests supply Download and GetTitle implementations inline.
 type funcDownloader struct {
-	download func(ctx context.Context, url, dir, name string, format download.Format) error
+	download func(ctx context.Context, url, dir, name string, format download.Format, onProgress func(int)) error
 	getTitle func(ctx context.Context, url string) (string, error)
 }
 
-func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format download.Format) error {
-	return f.download(ctx, url, dir, name, format)
+func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format download.Format, onProgress func(int)) error {
+	return f.download(ctx, url, dir, name, format, onProgress)
 }
 
 func (f *funcDownloader) GetTitle(ctx context.Context, url string) (string, error) {
@@ -47,11 +47,11 @@ func (f *funcDownloader) GetTitle(ctx context.Context, url string) (string, erro
 }
 
 func okDownloader() *funcDownloader {
-	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil }}
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error { return nil }}
 }
 
 func errDownloader(msg string) *funcDownloader {
-	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error {
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error {
 		return errors.New(msg)
 	}}
 }
@@ -120,7 +120,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	var mu sync.Mutex
 	current, maxSeen := 0, 0
 
-	dl := &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error {
+	dl := &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error {
 		mu.Lock()
 		current++
 		if current > maxSeen {
@@ -161,7 +161,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 func TestQueue_TitleStoredOnEnqueue(t *testing.T) {
 	database := newTestDB(t)
 	dl := &funcDownloader{
-		download: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil },
+		download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error { return nil },
 		getTitle: func(_ context.Context, _ string) (string, error) { return "My Cool Video", nil },
 	}
 	q := queue.New(1, database, dl)

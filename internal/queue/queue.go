@@ -12,7 +12,7 @@ import (
 const bufferSize = 100
 
 type Downloader interface {
-	Download(ctx context.Context, url, targetDir, newName string, format download.Format) error
+	Download(ctx context.Context, url, targetDir, newName string, format download.Format, onProgress func(int)) error
 	GetTitle(ctx context.Context, url string) (string, error)
 }
 
@@ -94,7 +94,9 @@ func (q *Queue) process(job DownloadJob) {
 		log.Printf("queue: failed to update status for download %d: %v", job.ID, err)
 	}
 
-	err := q.dl.Download(context.Background(), job.URL, job.TargetDir, job.NewName, job.Format)
+	err := q.dl.Download(context.Background(), job.URL, job.TargetDir, job.NewName, job.Format, func(pct int) {
+		q.db.Exec(`UPDATE downloads SET progress=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, pct, job.ID)
+	})
 	if err != nil {
 		log.Printf("queue: download %d failed: %v", job.ID, err)
 		q.db.Exec(`
