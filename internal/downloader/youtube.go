@@ -70,6 +70,19 @@ func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, 
 	return nil
 }
 
+// GetTitle retrieves the video title for a given YouTube URL.
+func (y *youTube) GetTitle(ctx context.Context, url string) (string, error) {
+	if _, err := y.lookPathFunc(y.bin); err != nil {
+		return "", fmt.Errorf("%s not found in PATH: %w", y.bin, err)
+	}
+	cmd := y.cmd(ctx, y.bin, "--no-warning", "--print", "%(title)s", url)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s failed: %w\n%s", y.bin, err, string(out))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // GetChannel retrieves the channel name for a given YouTube URL.
 //
 // Parameters:

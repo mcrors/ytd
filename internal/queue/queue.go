@@ -13,6 +13,7 @@ const bufferSize = 100
 
 type Downloader interface {
 	Download(ctx context.Context, url, targetDir, newName string, format download.Format) error
+	GetTitle(ctx context.Context, url string) (string, error)
 }
 
 type DownloadJob struct {
@@ -21,6 +22,7 @@ type DownloadJob struct {
 	TargetDir string // absolute path, already validated by the enqueuing layer
 	NewName   string
 	Format    download.Format
+	Title     string
 }
 
 type Queue struct {
@@ -53,13 +55,19 @@ func (q *Queue) Shutdown() {
 	q.wg.Wait()
 }
 
+// GetTitle fetches the video title from the underlying downloader.
+// Call this before Enqueue so the title can be stored with the job.
+func (q *Queue) GetTitle(ctx context.Context, url string) (string, error) {
+	return q.dl.GetTitle(ctx, url)
+}
+
 // Enqueue persists the job to SQLite and submits it to the worker pool.
 // Returns the assigned download ID.
 func (q *Queue) Enqueue(ctx context.Context, job DownloadJob) (int64, error) {
 	res, err := q.db.ExecContext(ctx, `
-		INSERT INTO downloads (url, target_dir, format, status)
-		VALUES (?, ?, ?, 'queued')
-	`, job.URL, job.TargetDir, job.Format)
+		INSERT INTO downloads (url, target_dir, format, status, title)
+		VALUES (?, ?, ?, 'queued', ?)
+	`, job.URL, job.TargetDir, job.Format, job.Title)
 	if err != nil {
 		return 0, err
 	}

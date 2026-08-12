@@ -29,21 +29,29 @@ func newTestDB(t *testing.T) *sql.DB {
 	return database
 }
 
-// funcDownloader lets tests supply a Download implementation inline.
+// funcDownloader lets tests supply Download and GetTitle implementations inline.
 type funcDownloader struct {
-	fn func(ctx context.Context, url, dir, name string, format download.Format) error
+	download func(ctx context.Context, url, dir, name string, format download.Format) error
+	getTitle func(ctx context.Context, url string) (string, error)
 }
 
 func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format download.Format) error {
-	return f.fn(ctx, url, dir, name, format)
+	return f.download(ctx, url, dir, name, format)
+}
+
+func (f *funcDownloader) GetTitle(ctx context.Context, url string) (string, error) {
+	if f.getTitle != nil {
+		return f.getTitle(ctx, url)
+	}
+	return "Test Video", nil
 }
 
 func okDownloader() *funcDownloader {
-	return &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil }}
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil }}
 }
 
 func errDownloader(msg string) *funcDownloader {
-	return &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error {
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error {
 		return errors.New(msg)
 	}}
 }
@@ -112,7 +120,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	var mu sync.Mutex
 	current, maxSeen := 0, 0
 
-	dl := &funcDownloader{fn: func(_ context.Context, _, _, _ string, _ download.Format) error {
+	dl := &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format) error {
 		mu.Lock()
 		current++
 		if current > maxSeen {
@@ -147,5 +155,39 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	}
 	if maxSeen == 0 {
 		t.Error("no jobs ran concurrently — workers may not have started")
+	}
+}
+
+func TestQueue_TitleStoredOnEnqueue(t *testing.T) {
+	database := newTestDB(t)
+	dl := &funcDownloader{
+		download: func(_ context.Context, _, _, _ string, _ download.Format) error { return nil },
+		getTitle: func(_ context.Context, _ string) (string, error) { return "My Cool Video", nil },
+	}
+	q := queue.New(1, database, dl)
+	q.Start()
+
+	title, err := q.GetTitle(context.Background(), "https://example.com/video")
+	if err != nil {
+		t.Fatalf("GetTitle: %v", err)
+	}
+
+	id, err := q.Enqueue(context.Background(), queue.DownloadJob{
+		URL:       "https://example.com/video",
+		TargetDir: "/tmp/media",
+		Title:     title,
+	})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	q.Shutdown()
+
+	var stored string
+	if err := database.QueryRow(`SELECT title FROM downloads WHERE id=?`, id).Scan(&stored); err != nil {
+		t.Fatalf("querying title: %v", err)
+	}
+	if stored != "My Cool Video" {
+		t.Errorf("title = %q, want %q", stored, "My Cool Video")
 	}
 }
