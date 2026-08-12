@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"sync"
 
@@ -31,6 +32,8 @@ type Queue struct {
 	jobs    chan DownloadJob
 	workers int
 	wg      sync.WaitGroup
+	mu      sync.Mutex
+	inFlight map[int64]context.CancelFunc
 }
 
 func New(workers int, db *sql.DB, dl Downloader) *Queue {
@@ -39,6 +42,18 @@ func New(workers int, db *sql.DB, dl Downloader) *Queue {
 		db:      db,
 		workers: workers,
 		jobs:    make(chan DownloadJob, bufferSize),
+		inFlight: make(map[int64]context.CancelFunc),
+	}
+}
+
+// Cancel stops an in-progress download by cancelling its context.
+// If the download is already completed or cancelled, this is a no-op.
+func (q *Queue) Cancel(id int64) {
+	q.mu.Lock()
+	cancel, ok := q.inFlight[id]
+	q.mu.Unlock()
+	if ok {
+		cancel()
 	}
 }
 
@@ -88,16 +103,35 @@ func (q *Queue) worker() {
 }
 
 func (q *Queue) process(job DownloadJob) {
+	ctx, cancel := context.WithCancel(context.Background())
+	q.mu.Lock()
+	q.inFlight[job.ID] = cancel
+	q.mu.Unlock()
+	defer func() {
+		cancel()
+		q.mu.Lock()
+		delete(q.inFlight, job.ID)
+		q.mu.Unlock()
+	}()
+
 	if _, err := q.db.Exec(`
 		UPDATE downloads SET status='downloading', updated_at=CURRENT_TIMESTAMP WHERE id=?
 	`, job.ID); err != nil {
 		log.Printf("queue: failed to update status for download %d: %v", job.ID, err)
 	}
 
-	err := q.dl.Download(context.Background(), job.URL, job.TargetDir, job.NewName, job.Format, func(pct int) {
+	err := q.dl.Download(ctx, job.URL, job.TargetDir, job.NewName, job.Format, func(pct int) {
 		q.db.Exec(`UPDATE downloads SET progress=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, pct, job.ID)
 	})
 	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			log.Printf("queue: download %d cancelled", job.ID)
+			CleanPartFiles(job.TargetDir)
+			q.db.Exec(`
+				UPDATE downloads SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?
+			`, job.ID)
+			return
+		}
 		log.Printf("queue: download %d failed: %v", job.ID, err)
 		q.db.Exec(`
 			UPDATE downloads SET status='failed', error_message=?, updated_at=CURRENT_TIMESTAMP WHERE id=?

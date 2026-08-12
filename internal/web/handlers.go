@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/mcrors/ytd/internal/download"
@@ -118,6 +119,17 @@ func (s *server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("created directory: %s", req.Dir)
 	respondJSON(w, http.StatusCreated, map[string]string{"message": "Directory created"})
+}
+
+func (s *server) cancelHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid download id")
+		return
+	}
+	s.canceller.Cancel(id)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) healthzHandler(w http.ResponseWriter, r *http.Request) {

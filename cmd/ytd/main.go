@@ -42,7 +42,7 @@ func main() {
 	q.Start()
 
 	mux := http.NewServeMux()
-	if err := web.RegisterRoutes(mux, ds, cfg.MediaDir, database, cfg.Dev); err != nil {
+	if err := web.RegisterRoutes(mux, ds, q, cfg.MediaDir, database, cfg.Dev); err != nil {
 		log.Fatalf("web: %v", err)
 	}
 

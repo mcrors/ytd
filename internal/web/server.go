@@ -20,16 +20,21 @@ type Downloader interface {
 	Download(context.Context, download.DownloadCommand) (*download.DownloadResult, error)
 }
 
-type server struct {
-	dl      Downloader
-	baseDir string
-	db      *sql.DB
-	tmpls   map[string]*template.Template
-	dev     bool
+type Canceller interface {
+	Cancel(id int64)
 }
 
-func RegisterRoutes(mux *http.ServeMux, dl Downloader, baseDir string, db *sql.DB, dev bool) error {
-	s := &server{dl: dl, baseDir: baseDir, db: db, dev: dev}
+type server struct {
+	dl        Downloader
+	canceller Canceller
+	baseDir   string
+	db        *sql.DB
+	tmpls     map[string]*template.Template
+	dev       bool
+}
+
+func RegisterRoutes(mux *http.ServeMux, dl Downloader, canceller Canceller, baseDir string, db *sql.DB, dev bool) error {
+	s := &server{dl: dl, canceller: canceller, baseDir: baseDir, db: db, dev: dev}
 
 	if !dev {
 		tmpls, err := loadTemplates(embeddedFiles)
@@ -48,6 +53,7 @@ func RegisterRoutes(mux *http.ServeMux, dl Downloader, baseDir string, db *sql.D
 	mux.HandleFunc("GET /", s.indexHandler)
 	mux.HandleFunc("GET /healthz", s.healthzHandler)
 	mux.HandleFunc("GET /readyz", s.readyzHandler)
+	mux.HandleFunc("DELETE /downloads/{id}/cancel", s.cancelHandler)
 	mux.HandleFunc("POST /api/download", s.downloadHandler)
 	mux.HandleFunc("GET /api/directories", s.getDirectoriesHandler)
 	mux.HandleFunc("POST /api/directory", s.createDirectoryHandler)
