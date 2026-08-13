@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -12,23 +13,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 	"github.com/mcrors/ytd/internal/pathutil"
 )
 
 // --- Request/response types ---
-
-type downloadRequest struct {
-	URL       string          `json:"url"`
-	TargetDir string          `json:"targetDir"`
-	NewName   string          `json:"newName"`
-	Format    download.Format `json:"format"`
-}
-
-type downloadResponse struct {
-	Filename string `json:"filename"`
-	Message  string `json:"message"`
-}
 
 type createDirectoryRequest struct {
 	Dir string `json:"dir"`
@@ -60,32 +49,74 @@ func (s *server) indexHandler(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "index.html", nil)
 }
 
-func (s *server) downloadHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	var req downloadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+func (s *server) submitHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid form")
 		return
 	}
 
-	format := req.Format
-	if format == "" {
-		format = download.FormatBest
+	rawURL := r.FormValue("url")
+	if rawURL == "" {
+		respondError(w, http.StatusBadRequest, "url is required")
+		return
 	}
 
-	res, err := s.dl.Download(r.Context(), download.DownloadCommand{
-		TargetDir: req.TargetDir,
-		URL:       req.URL,
-		NewName:   req.NewName,
-		Format:    format,
-	})
+	absDir, err := pathutil.SafeJoin(s.baseDir, r.FormValue("targetDir"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondError(w, http.StatusBadRequest, "invalid directory: "+err.Error())
 		return
 	}
 
-	respondJSON(w, http.StatusOK, downloadResponse{Filename: res.Filename, Message: res.Message})
+	f := format.Format(r.FormValue("format"))
+	if f == "" {
+		f = format.FormatBest
+	}
+
+	title, err := s.queue.GetTitle(r.Context(), rawURL)
+	if err != nil {
+		log.Printf("web: GetTitle: %v", err)
+		title = rawURL
+	}
+
+	id, err := s.queue.Enqueue(r.Context(), rawURL, absDir, r.FormValue("newName"), f, title)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "enqueue failed: "+err.Error())
+		return
+	}
+
+	d, err := queryDownload(s.db, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.renderFragment(w, "download-row.html", d)
+}
+
+func (s *server) statusHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid download id")
+		return
+	}
+	d, err := queryDownload(s.db, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.renderFragment(w, "download-row.html", d)
+}
+
+func (s *server) historyHandler(w http.ResponseWriter, r *http.Request) {
+	downloads, err := queryHistory(s.db)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.renderFragment(w, "download-history.html", downloads)
 }
 
 func (s *server) getDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
@@ -122,13 +153,12 @@ func (s *server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *server) cancelHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid download id")
 		return
 	}
-	s.canceller.Cancel(id)
+	s.queue.Cancel(id)
 	w.WriteHeader(http.StatusNoContent)
 }
 

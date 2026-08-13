@@ -1,0 +1,15 @@
+{{ define "download-history" }}
+<div id="download-history" class="space-y-2">
+  {{ range . }}
+  <div id="download-{{ .ID }}" class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+    <div class="flex-1 min-w-0">
+      <p class="font-medium truncate">{{ if .Title }}{{ .Title }}{{ else }}{{ .URL }}{{ end }}</p>
+      <p class="text-sm text-base-content/60">{{ .Status }}</p>
+      {{ if .ErrorMessage }}<p class="text-sm text-error">{{ .ErrorMessage }}</p>{{ end }}
+    </div>
+  </div>
+  {{ else }}
+  <p class="text-base-content/40 text-center py-4">No history yet.</p>
+  {{ end }}
+</div>
+{{ end }}

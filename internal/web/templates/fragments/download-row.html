@@ -1,0 +1,27 @@
+{{ define "download-row" }}
+<div id="download-{{ .ID }}"
+  {{ if or (eq .Status "queued") (eq .Status "downloading") }}
+  hx-get="/downloads/{{ .ID }}/status"
+  hx-trigger="every 2s"
+  hx-swap="outerHTML"
+  {{ end }}
+  class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+  <div class="flex-1 min-w-0">
+    <p class="font-medium truncate">{{ if .Title }}{{ .Title }}{{ else }}{{ .URL }}{{ end }}</p>
+    <p class="text-sm text-base-content/60">
+      {{ .Status }}{{ if eq .Status "downloading" }} &mdash; {{ .Progress }}%{{ end }}
+    </p>
+    {{ if and (eq .Status "downloading") (gt .Progress 0) }}
+    <progress class="progress progress-primary w-full mt-1" value="{{ .Progress }}" max="100"></progress>
+    {{ end }}
+    {{ if .ErrorMessage }}<p class="text-sm text-error mt-1">{{ .ErrorMessage }}</p>{{ end }}
+  </div>
+  {{ if or (eq .Status "queued") (eq .Status "downloading") }}
+  <button
+    hx-delete="/downloads/{{ .ID }}/cancel"
+    hx-swap="outerHTML"
+    hx-target="#download-{{ .ID }}"
+    class="btn btn-sm btn-ghost text-error">Cancel</button>
+  {{ end }}
+</div>
+{{ end }}

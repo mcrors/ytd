@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/mcrors/ytd/internal/db"
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 	"github.com/mcrors/ytd/internal/queue"
 )
 
@@ -31,11 +31,11 @@ func newTestDB(t *testing.T) *sql.DB {
 
 // funcDownloader lets tests supply Download and GetTitle implementations inline.
 type funcDownloader struct {
-	download func(ctx context.Context, url, dir, name string, format download.Format, onProgress func(int)) error
+	download func(ctx context.Context, url, dir, name string, format format.Format, onProgress func(int)) error
 	getTitle func(ctx context.Context, url string) (string, error)
 }
 
-func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format download.Format, onProgress func(int)) error {
+func (f *funcDownloader) Download(ctx context.Context, url, dir, name string, format format.Format, onProgress func(int)) error {
 	return f.download(ctx, url, dir, name, format, onProgress)
 }
 
@@ -47,11 +47,11 @@ func (f *funcDownloader) GetTitle(ctx context.Context, url string) (string, erro
 }
 
 func okDownloader() *funcDownloader {
-	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error { return nil }}
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ format.Format, _ func(int)) error { return nil }}
 }
 
 func errDownloader(msg string) *funcDownloader {
-	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error {
+	return &funcDownloader{download: func(_ context.Context, _, _, _ string, _ format.Format, _ func(int)) error {
 		return errors.New(msg)
 	}}
 }
@@ -71,10 +71,7 @@ func TestQueue_CompletedJob(t *testing.T) {
 	q := queue.New(1, database, okDownloader())
 	q.Start()
 
-	id, err := q.Enqueue(context.Background(), queue.DownloadJob{
-		URL:       "https://example.com/video",
-		TargetDir: "/tmp/media",
-	})
+	id, err := q.Enqueue(context.Background(), "https://example.com/video", "/tmp/media", "", format.FormatBest, "")
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -92,10 +89,7 @@ func TestQueue_FailedJob(t *testing.T) {
 	q := queue.New(1, database, errDownloader("yt-dlp exploded"))
 	q.Start()
 
-	id, err := q.Enqueue(context.Background(), queue.DownloadJob{
-		URL:       "https://example.com/video",
-		TargetDir: "/tmp/media",
-	})
+	id, err := q.Enqueue(context.Background(), "https://example.com/video", "/tmp/media", "", format.FormatBest, "")
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -120,7 +114,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	var mu sync.Mutex
 	current, maxSeen := 0, 0
 
-	dl := &funcDownloader{download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error {
+	dl := &funcDownloader{download: func(_ context.Context, _, _, _ string, _ format.Format, _ func(int)) error {
 		mu.Lock()
 		current++
 		if current > maxSeen {
@@ -140,10 +134,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 	q.Start()
 
 	for i := range jobs {
-		if _, err := q.Enqueue(context.Background(), queue.DownloadJob{
-			URL:       fmt.Sprintf("https://example.com/video/%d", i),
-			TargetDir: "/tmp/media",
-		}); err != nil {
+		if _, err := q.Enqueue(context.Background(), fmt.Sprintf("https://example.com/video/%d", i), "/tmp/media", "", format.FormatBest, ""); err != nil {
 			t.Fatalf("Enqueue %d: %v", i, err)
 		}
 	}
@@ -161,7 +152,7 @@ func TestQueue_BoundedConcurrency(t *testing.T) {
 func TestQueue_TitleStoredOnEnqueue(t *testing.T) {
 	database := newTestDB(t)
 	dl := &funcDownloader{
-		download: func(_ context.Context, _, _, _ string, _ download.Format, _ func(int)) error { return nil },
+		download: func(_ context.Context, _, _, _ string, _ format.Format, _ func(int)) error { return nil },
 		getTitle: func(_ context.Context, _ string) (string, error) { return "My Cool Video", nil },
 	}
 	q := queue.New(1, database, dl)
@@ -172,11 +163,7 @@ func TestQueue_TitleStoredOnEnqueue(t *testing.T) {
 		t.Fatalf("GetTitle: %v", err)
 	}
 
-	id, err := q.Enqueue(context.Background(), queue.DownloadJob{
-		URL:       "https://example.com/video",
-		TargetDir: "/tmp/media",
-		Title:     title,
-	})
+	id, err := q.Enqueue(context.Background(), "https://example.com/video", "/tmp/media", "", format.FormatBest, title)
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}

@@ -8,33 +8,31 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"os"
+	"strings"
 
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 )
 
 //go:embed templates static
 var embeddedFiles embed.FS
 
-type Downloader interface {
-	Download(context.Context, download.DownloadCommand) (*download.DownloadResult, error)
-}
-
-type Canceller interface {
+type Queue interface {
+	GetTitle(ctx context.Context, url string) (string, error)
+	Enqueue(ctx context.Context, url, targetDir, newName string, format format.Format, title string) (int64, error)
 	Cancel(id int64)
 }
 
 type server struct {
-	dl        Downloader
-	canceller Canceller
+	queue     Queue
 	baseDir   string
 	db        *sql.DB
 	tmpls     map[string]*template.Template
+	fragTmpls map[string]*template.Template
 	dev       bool
 }
 
-func RegisterRoutes(mux *http.ServeMux, dl Downloader, canceller Canceller, baseDir string, db *sql.DB, dev bool) error {
-	s := &server{dl: dl, canceller: canceller, baseDir: baseDir, db: db, dev: dev}
+func RegisterRoutes(mux *http.ServeMux, queue Queue, baseDir string, db *sql.DB, dev bool) error {
+	s := &server{queue: queue, baseDir: baseDir, db: db, dev: dev}
 
 	if !dev {
 		tmpls, err := loadTemplates(embeddedFiles)
@@ -42,6 +40,12 @@ func RegisterRoutes(mux *http.ServeMux, dl Downloader, canceller Canceller, base
 			return fmt.Errorf("loading templates: %w", err)
 		}
 		s.tmpls = tmpls
+
+		frags, err := loadFragments(embeddedFiles)
+		if err != nil {
+			return fmt.Errorf("loading fragments: %w", err)
+		}
+		s.fragTmpls = frags
 	}
 
 	staticFS, err := fs.Sub(embeddedFiles, "static")
@@ -53,53 +57,39 @@ func RegisterRoutes(mux *http.ServeMux, dl Downloader, canceller Canceller, base
 	mux.HandleFunc("GET /", s.indexHandler)
 	mux.HandleFunc("GET /healthz", s.healthzHandler)
 	mux.HandleFunc("GET /readyz", s.readyzHandler)
+	mux.HandleFunc("POST /downloads", s.submitHandler)
+	mux.HandleFunc("GET /downloads/{id}/status", s.statusHandler)
 	mux.HandleFunc("DELETE /downloads/{id}/cancel", s.cancelHandler)
-	mux.HandleFunc("POST /api/download", s.downloadHandler)
+	mux.HandleFunc("GET /downloads/history", s.historyHandler)
 	mux.HandleFunc("GET /api/directories", s.getDirectoriesHandler)
 	mux.HandleFunc("POST /api/directory", s.createDirectoryHandler)
 
 	return nil
 }
 
-func loadTemplates(fsys fs.FS) (map[string]*template.Template, error) {
-	pages, err := fs.Glob(fsys, "templates/pages/*.html")
+func loadHTMLFiles(fsys fs.FS, glob string, extras ...string) (map[string]*template.Template, error) {
+	files, err := fs.Glob(fsys, glob)
 	if err != nil {
 		return nil, err
 	}
-	tmpls := make(map[string]*template.Template, len(pages))
-	for _, page := range pages {
-		name := page[len("templates/pages/"):]
-		t, err := template.New("").ParseFS(fsys, "templates/layout.html", page)
+	prefix := glob[:strings.LastIndex(glob, "/")+1]
+	tmpls := make(map[string]*template.Template, len(files))
+	for _, f := range files {
+		parseFiles := append(extras, f)
+		t, err := template.New("").ParseFS(fsys, parseFiles...)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", page, err)
+			return nil, fmt.Errorf("parsing %s: %w", f, err)
 		}
-		tmpls[name] = t
+		tmpls[f[len(prefix):]] = t
 	}
 	return tmpls, nil
 }
 
-func (s *server) render(w http.ResponseWriter, page string, data any) {
-	var tmpl *template.Template
-
-	if s.dev {
-		var err error
-		diskFS := os.DirFS("internal/web")
-		tmpl, err = template.New("").ParseFS(diskFS, "templates/layout.html", "templates/pages/"+page)
-		if err != nil {
-			http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		var ok bool
-		tmpl, ok = s.tmpls[page]
-		if !ok {
-			http.Error(w, "template not found: "+page, http.StatusInternalServerError)
-			return
-		}
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
-		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
-	}
+func loadTemplates(fsys fs.FS) (map[string]*template.Template, error) {
+	return loadHTMLFiles(fsys, "templates/pages/*.html", "templates/layout.html")
 }
+
+func loadFragments(fsys fs.FS) (map[string]*template.Template, error) {
+	return loadHTMLFiles(fsys, "templates/fragments/*.html")
+}
+

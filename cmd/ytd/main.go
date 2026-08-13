@@ -12,7 +12,6 @@ import (
 
 	"github.com/mcrors/ytd/internal/config"
 	"github.com/mcrors/ytd/internal/db"
-	"github.com/mcrors/ytd/internal/download"
 	"github.com/mcrors/ytd/internal/downloader"
 	"github.com/mcrors/ytd/internal/middleware"
 	"github.com/mcrors/ytd/internal/queue"
@@ -36,13 +35,12 @@ func main() {
 	}
 
 	yt := downloader.NewYouTube("yt-dlp", exec.CommandContext, exec.LookPath)
-	ds := download.NewDownloadService(cfg.MediaDir, yt)
 
 	q := queue.New(cfg.MaxConcurrentDL, database, yt)
 	q.Start()
 
 	mux := http.NewServeMux()
-	if err := web.RegisterRoutes(mux, ds, q, cfg.MediaDir, database, cfg.Dev); err != nil {
+	if err := web.RegisterRoutes(mux, q, cfg.MediaDir, database, cfg.Dev); err != nil {
 		log.Fatalf("web: %v", err)
 	}
 

@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Phase: 2 — Download Flow
 
 HTMX routes for the full download lifecycle: submit, poll for status, and cancel. All return HTML fragments for HTMX to swap in.
@@ -14,9 +14,9 @@ HTMX routes for the full download lifecycle: submit, poll for status, and cancel
 
 ## Acceptance criteria
 
-- [ ] All routes registered in `web.RegisterRoutes()`
-- [ ] Submit handler: validates URL + format, calls `GetTitle`, inserts row, enqueues job, returns fragment
-- [ ] Status handler: reads download row from SQLite, renders progress fragment
-- [ ] Cancel handler: triggers cancellation, returns updated row fragment
-- [ ] History handler: returns all non-active rows ordered by `created_at` desc
-- [ ] Integration tests for each route (in-memory SQLite, mock downloader)
+- [x] All routes registered in `web.RegisterRoutes()`
+- [x] Submit handler: validates URL + format, calls `GetTitle`, inserts row, enqueues job, returns fragment
+- [x] Status handler: reads download row from SQLite, renders progress fragment
+- [x] Cancel handler: triggers cancellation, returns updated row fragment
+- [x] History handler: returns all non-active rows ordered by `created_at` desc
+- [x] Integration tests for each route (in-memory SQLite, mock downloader)

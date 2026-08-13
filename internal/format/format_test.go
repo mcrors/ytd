@@ -1,27 +1,27 @@
-package download_test
+package format_test
 
 import (
 	"testing"
 
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 )
 
 func TestFormatArgs(t *testing.T) {
 	tests := []struct {
-		format  download.Format
+		format  format.Format
 		wantErr bool
 		wantArg string // spot-check the -f value
 	}{
-		{download.FormatBest, false, "bestvideo+bestaudio/best"},
-		{download.Format1080p, false, "bestvideo[height<=1080]+bestaudio/best[height<=1080]"},
-		{download.FormatAudio, false, "bestaudio/best"},
+		{format.FormatBest, false, "bestvideo+bestaudio/best"},
+		{format.Format1080p, false, "bestvideo[height<=1080]+bestaudio/best[height<=1080]"},
+		{format.FormatAudio, false, "bestaudio/best"},
 		{"invalid", true, ""},
 		{"", true, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.format), func(t *testing.T) {
-			args, err := download.FormatArgs(tt.format)
+			args, err := format.FormatArgs(tt.format)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("FormatArgs(%q) error = %v, wantErr %v", tt.format, err, tt.wantErr)
 			}
@@ -39,7 +39,7 @@ func TestFormatArgs(t *testing.T) {
 }
 
 func TestFormatArgs_AudioExtractsMP3(t *testing.T) {
-	args, err := download.FormatArgs(download.FormatAudio)
+	args, err := format.FormatArgs(format.FormatAudio)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

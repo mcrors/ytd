@@ -7,13 +7,13 @@ import (
 	"log"
 	"sync"
 
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 )
 
 const bufferSize = 100
 
 type Downloader interface {
-	Download(ctx context.Context, url, targetDir, newName string, format download.Format, onProgress func(int)) error
+	Download(ctx context.Context, url, targetDir, newName string, format format.Format, onProgress func(int)) error
 	GetTitle(ctx context.Context, url string) (string, error)
 }
 
@@ -22,7 +22,7 @@ type DownloadJob struct {
 	URL       string
 	TargetDir string // absolute path, already validated by the enqueuing layer
 	NewName   string
-	Format    download.Format
+	Format    format.Format
 	Title     string
 }
 
@@ -78,11 +78,11 @@ func (q *Queue) GetTitle(ctx context.Context, url string) (string, error) {
 
 // Enqueue persists the job to SQLite and submits it to the worker pool.
 // Returns the assigned download ID.
-func (q *Queue) Enqueue(ctx context.Context, job DownloadJob) (int64, error) {
+func (q *Queue) Enqueue(ctx context.Context, url, targetDir, newName string, format format.Format, title string) (int64, error) {
 	res, err := q.db.ExecContext(ctx, `
 		INSERT INTO downloads (url, target_dir, format, status, title)
 		VALUES (?, ?, ?, 'queued', ?)
-	`, job.URL, job.TargetDir, job.Format, job.Title)
+	`, url, targetDir, format, title)
 	if err != nil {
 		return 0, err
 	}
@@ -90,8 +90,7 @@ func (q *Queue) Enqueue(ctx context.Context, job DownloadJob) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	job.ID = id
-	q.jobs <- job
+	q.jobs <- DownloadJob{ID: id, URL: url, TargetDir: targetDir, NewName: newName, Format: format, Title: title}
 	return id, nil
 }
 

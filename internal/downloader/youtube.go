@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mcrors/ytd/internal/download"
+	"github.com/mcrors/ytd/internal/format"
 )
 
 type Commander func(ctx context.Context, name string, args ...string) *exec.Cmd
@@ -37,7 +37,7 @@ func NewYouTube(bin string, cmd Commander, LookPathFunc LookPathFunc) *youTube {
 //
 // Parameters:
 //   - ctx: context used to control cancellation or timeouts for the command execution.
-//   - url: the YouTube video (or playlist) URL to download.
+//   - url: the YouTube video (or playlist) URL to format.
 //   - targetDir: the directory where the downloaded file should be saved. It will
 //     be created if it does not exist.
 //   - newName: optional new base name for the output file. If empty, the video title
@@ -46,7 +46,7 @@ func NewYouTube(bin string, cmd Commander, LookPathFunc LookPathFunc) *youTube {
 // Returns:
 //   - error: non-nil if the binary is not found in PATH, the target directory
 //     cannot be created, or the download command fails.
-func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, format download.Format, onProgress func(int)) error {
+func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, f format.Format, onProgress func(int)) error {
 	if _, err := y.lookPathFunc(y.bin); err != nil {
 		return fmt.Errorf("%s not found in PATH: %w", y.bin, err)
 	}
@@ -55,7 +55,7 @@ func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, 
 		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
-	formatArgs, err := download.FormatArgs(format)
+	formatArgs, err := format.FormatArgs(f)
 	if err != nil {
 		return err
 	}
@@ -84,11 +84,9 @@ func (y *youTube) Download(ctx context.Context, url, targetDir, newName string, 
 
 	var stderrBuf bytes.Buffer
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		io.Copy(&stderrBuf, stderr)
-	}()
+	})
 
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
