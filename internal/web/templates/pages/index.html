@@ -1,11 +1,65 @@
 {{ template "layout" . }}
 {{ define "content" }}
-<div class="hero min-h-[60vh]">
-  <div class="hero-content text-center">
-    <div>
-      <h1 class="text-5xl font-bold">ytd</h1>
-      <p class="py-6 text-base-content/70">Self-hosted YouTube downloader.</p>
+<div class="max-w-2xl mx-auto px-4 py-8 space-y-8">
+
+  <!-- Download form -->
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title mb-2">New Download</h2>
+      <form hx-post="/downloads"
+            hx-target="#active-queue"
+            hx-swap="afterbegin"
+            hx-indicator="#submit-indicator"
+            hx-on::after-request="if(event.detail.successful) this.reset()">
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">YouTube URL</span></label>
+          <input type="url" name="url" required
+                 placeholder="https://youtube.com/watch?v=..."
+                 class="input input-bordered w-full" />
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label"><span class="label-text">Format</span></label>
+          <select name="format" class="select select-bordered w-full">
+            <option value="best">Best quality</option>
+            <option value="1080p">1080p</option>
+            <option value="audio">Audio only (MP3)</option>
+          </select>
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text">Rename</span>
+            <span class="label-text-alt text-base-content/50">optional — leave blank to use video title</span>
+          </label>
+          <input type="text" name="newName"
+                 class="input input-bordered w-full" />
+        </div>
+
+        <!-- targetDir is set by the folder browser (ticket 13) -->
+        <input type="hidden" name="targetDir" id="target-dir" value="" />
+        <div class="form-control mt-4">
+          <label class="label"><span class="label-text">Destination folder</span></label>
+          <div class="flex items-center gap-3">
+            <button type="button" class="btn btn-outline btn-sm" disabled>Browse folders</button>
+            <span id="selected-folder" class="text-sm text-base-content/50">Default folder</span>
+          </div>
+        </div>
+
+        <div class="card-actions justify-end items-center mt-6">
+          <span id="submit-indicator" class="loading loading-spinner loading-sm htmx-indicator"></span>
+          <button type="submit" class="btn btn-primary">Download</button>
+        </div>
+      </form>
     </div>
   </div>
+
+  <!-- Active downloads -->
+  <div>
+    <h2 class="text-lg font-semibold mb-3">Active Downloads</h2>
+    <div id="active-queue" class="space-y-2"></div>
+  </div>
+
 </div>
 {{ end }}

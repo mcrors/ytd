@@ -3,13 +3,19 @@ APP_NAME = ytd
 BUILD_DIR = bin
 MAIN_PKG = ./cmd/ytd
 
-.PHONY: run build docker fmt lint vet unit-test integration-test e2e-test
+.PHONY: run build dev-up dev-down docker fmt lint vet unit-test integration-test e2e-test
 
 run:
 	go run $(MAIN_PKG)
 
 build:
 	go build -o $(BUILD_DIR)/$(APP_NAME) $(MAIN_PKG)
+
+dev-up:
+	docker compose -f docker-compose.dev.yaml up --build
+
+dev-down:
+	docker compose -f docker-compose.dev.yaml down
 
 docker:
 	docker build -t $(APP_NAME):latest .

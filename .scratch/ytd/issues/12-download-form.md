@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Phase: 3 — UI
 
 The main download submission form. URL input, format picker (3 presets), optional rename field, and folder browser trigger. Submits via HTMX POST.
