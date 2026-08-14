@@ -37,12 +37,13 @@
                  class="input input-bordered w-full" />
         </div>
 
-        <!-- targetDir is set by the folder browser (ticket 13) -->
+        <!-- targetDir is set by the folder browser -->
         <input type="hidden" name="targetDir" id="target-dir" value="" />
         <div class="form-control mt-4">
           <label class="label"><span class="label-text">Destination folder</span></label>
           <div class="flex items-center gap-3">
-            <button type="button" class="btn btn-outline btn-sm" disabled>Browse folders</button>
+            <button type="button" class="btn btn-outline btn-sm"
+                    onclick="document.getElementById('folder-modal').showModal()">Browse folders</button>
             <span id="selected-folder" class="text-sm text-base-content/50">Default folder</span>
           </div>
         </div>
@@ -62,4 +63,22 @@
   </div>
 
 </div>
+
+<!-- Folder browser modal -->
+<dialog id="folder-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">Browse Folders</h3>
+    <div hx-get="/folders" hx-trigger="load" hx-target="#folder-list">
+      <div id="folder-list"></div>
+    </div>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-ghost btn-sm">Cancel</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
 {{ end }}

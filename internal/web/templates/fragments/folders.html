@@ -1,0 +1,28 @@
+{{ define "folders" }}
+<div id="folder-list" class="space-y-1">
+  {{ range .Dirs }}
+  <button
+    type="button"
+    class="btn btn-ghost btn-sm w-full justify-start{{ if eq . $.Selected }} btn-active{{ end }}"
+    onclick="document.getElementById('target-dir').value='{{ . }}'; document.getElementById('selected-folder').textContent='{{ . }}'; document.getElementById('folder-modal').close()"
+  >
+    {{ . }}
+  </button>
+  {{ else }}
+  <p class="text-base-content/40 text-center py-4">No subfolders found.</p>
+  {{ end }}
+
+  <div class="divider my-2"></div>
+
+  <form hx-post="/folders" hx-target="#folder-list" hx-swap="outerHTML" class="flex gap-2">
+    <input
+      type="text"
+      name="dir"
+      placeholder="New folder name"
+      class="input input-bordered input-sm flex-1"
+      required
+    />
+    <button type="submit" class="btn btn-sm btn-primary">Create</button>
+  </form>
+</div>
+{{ end }}

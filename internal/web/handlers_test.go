@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -60,8 +61,13 @@ func newTestDB(t *testing.T) *sql.DB {
 
 func newTestServer(t *testing.T, q web.Queue, database *sql.DB) *httptest.Server {
 	t.Helper()
+	return newTestServerWithDir(t, q, database, t.TempDir())
+}
+
+func newTestServerWithDir(t *testing.T, q web.Queue, database *sql.DB, baseDir string) *httptest.Server {
+	t.Helper()
 	mux := http.NewServeMux()
-	if err := web.RegisterRoutes(mux, q, t.TempDir(), database, false); err != nil {
+	if err := web.RegisterRoutes(mux, q, baseDir, database, false); err != nil {
 		t.Fatalf("RegisterRoutes: %v", err)
 	}
 	return httptest.NewServer(mux)
@@ -247,4 +253,72 @@ func TestHistoryHandler_Empty(t *testing.T) {
 	if !strings.Contains(body, "No history yet") {
 		t.Errorf("empty history should show placeholder, got: %s", body)
 	}
+}
+
+func TestFoldersHandler(t *testing.T) {
+	baseDir := t.TempDir()
+	for _, name := range []string{"movies", "music", "podcasts"} {
+		if err := os.Mkdir(baseDir+"/"+name, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", name, err)
+		}
+	}
+
+	database := newTestDB(t)
+	srv := newTestServerWithDir(t, &mockQueue{}, database, baseDir)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/folders")
+	if err != nil {
+		t.Fatalf("GET /folders: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	body := readBody(t, resp)
+	for _, name := range []string{"movies", "music", "podcasts"} {
+		if !strings.Contains(body, name) {
+			t.Errorf("body should contain folder %q, got: %s", name, body)
+		}
+	}
+}
+
+func TestCreateFolderHandler(t *testing.T) {
+	baseDir := t.TempDir()
+	database := newTestDB(t)
+	srv := newTestServerWithDir(t, &mockQueue{}, database, baseDir)
+	defer srv.Close()
+
+	form := url.Values{"dir": {"newshow"}}
+	resp, err := srv.Client().Post(srv.URL+"/folders", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("POST /folders: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	body := readBody(t, resp)
+	if !strings.Contains(body, "newshow") {
+		t.Errorf("body should contain new folder name, got: %s", body)
+	}
+
+	if _, err := os.Stat(baseDir + "/newshow"); os.IsNotExist(err) {
+		t.Errorf("directory %s/newshow was not created on disk", baseDir)
+	}
+}
+
+func TestCreateFolderHandler_TraversalBlocked(t *testing.T) {
+	baseDir := t.TempDir()
+	database := newTestDB(t)
+	srv := newTestServerWithDir(t, &mockQueue{}, database, baseDir)
+	defer srv.Close()
+
+	form := url.Values{"dir": {"../../etc"}}
+	resp, err := srv.Client().Post(srv.URL+"/folders", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("POST /folders: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for traversal attempt", resp.StatusCode)
+	}
+	resp.Body.Close()
 }

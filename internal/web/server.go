@@ -61,8 +61,8 @@ func RegisterRoutes(mux *http.ServeMux, queue Queue, baseDir string, db *sql.DB,
 	mux.HandleFunc("GET /downloads/{id}/status", s.statusHandler)
 	mux.HandleFunc("DELETE /downloads/{id}/cancel", s.cancelHandler)
 	mux.HandleFunc("GET /downloads/history", s.historyHandler)
-	mux.HandleFunc("GET /api/directories", s.getDirectoriesHandler)
-	mux.HandleFunc("POST /api/directory", s.createDirectoryHandler)
+	mux.HandleFunc("GET /folders", s.foldersHandler)
+	mux.HandleFunc("POST /folders", s.createFolderHandler)
 
 	return nil
 }

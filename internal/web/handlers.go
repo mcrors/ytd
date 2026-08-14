@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -17,14 +16,11 @@ import (
 	"github.com/mcrors/ytd/internal/pathutil"
 )
 
-// --- Request/response types ---
+// --- Folder browser types ---
 
-type createDirectoryRequest struct {
-	Dir string `json:"dir"`
-}
-
-type directoriesResponse struct {
-	Directories []string `json:"directories"`
+type foldersData struct {
+	Dirs     []string
+	Selected string
 }
 
 // --- Readyz types ---
@@ -119,25 +115,26 @@ func (s *server) historyHandler(w http.ResponseWriter, r *http.Request) {
 	s.renderFragment(w, "download-history.html", downloads)
 }
 
-func (s *server) getDirectoriesHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) foldersHandler(w http.ResponseWriter, r *http.Request) {
 	entries, err := os.ReadDir(s.baseDir)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, directoriesResponse{Directories: findDirs(entries)})
+
+	s.renderFragment(w, "folders.html", foldersData{
+		Dirs: findDirs(entries),
+	})
 }
 
-func (s *server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	var req createDirectoryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+func (s *server) createFolderHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid form")
 		return
 	}
 
-	target, err := pathutil.SafeJoin(s.baseDir, req.Dir)
+	dir := r.FormValue("dir")
+	target, err := pathutil.SafeJoin(s.baseDir, dir)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -148,8 +145,18 @@ func (s *server) createDirectoryHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Printf("created directory: %s", req.Dir)
-	respondJSON(w, http.StatusCreated, map[string]string{"message": "Directory created"})
+	log.Printf("web: created folder: %s", dir)
+
+	entries, err := os.ReadDir(s.baseDir)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.renderFragment(w, "folders.html", foldersData{
+		Dirs:     findDirs(entries),
+		Selected: dir,
+	})
 }
 
 func (s *server) cancelHandler(w http.ResponseWriter, r *http.Request) {

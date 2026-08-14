@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Phase: 3 — UI
 
 Navigable tree of the MEDIA_DIR filesystem. Used to select a target folder for downloads and subscriptions. Also supports creating new folders at arbitrary depth.
