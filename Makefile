@@ -3,10 +3,14 @@ APP_NAME = ytd
 BUILD_DIR = bin
 MAIN_PKG = ./cmd/ytd
 
-.PHONY: run build dev-up dev-down docker fmt lint vet unit-test integration-test e2e-test
+.PHONY: run dev build dev-up dev-down docker fmt lint vet unit-test integration-test e2e-test
 
 run:
 	go run $(MAIN_PKG)
+
+# Templates are re-parsed from disk per request, so must run from the repo root.
+dev:
+	YTD_DEV=true go run $(MAIN_PKG)
 
 build:
 	go build -o $(BUILD_DIR)/$(APP_NAME) $(MAIN_PKG)

@@ -7,11 +7,16 @@ services:
     container_name: ytd
     ports:
       - "8080:8080"
+    # YTD_DEV makes the server parse templates from disk per request, relative
+    # to the process CWD, so the source dir must be mounted at ./internal/web.
+    working_dir: /app
     environment:
       - YTD_MEDIA_DIR=/data/media
       - YTD_DB_PATH=/data/ytdlp.db
+      - YTD_DEV=true
     volumes:
       - ./data:/data
+      - ./internal/web/templates:/app/internal/web/templates:ro
       # - ./config.yaml:/app/config.yaml:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
